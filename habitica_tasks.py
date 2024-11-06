@@ -11,31 +11,7 @@ def load_file_to_variable(habitica_data_file):
     habitica_data = json.loads(contents)
     return habitica_data
 
-
-def make_todos_by_date_dict(habitica_data):
-    todos_by_date = defaultdict(dict)
-    for todo in habitica_data["tasks"]["todos"]:
-        try:
-            datetime_obj = datetime.fromisoformat(todo["date"].replace("Z", ""))  # Convert to datetime object
-        except AttributeError:
-            print(f"Data missing for {todo['text']}")
-        date_str = datetime_obj.strftime("%Y-%m-%d")
-        time_str = datetime_obj.strftime("%H:%M")
-        text = todo["text"]
-        completed = todo["completed"]
-
-        if date_str not in todos_by_date:
-            todos_by_date[date_str] = {}
-
-        if "todos" not in todos_by_date[date_str]:
-            todos_by_date[date_str]["todos"] = []
-
-        todos_by_date[date_str]["todos"].append((text, completed, time_str))
-        todos_by_date = dict(sorted(todos_by_date.items()))
-    return (todos_by_date)
-
-
-# Remove duplicate dates from habitica_data dailys
+############### Dailys ########################
 def remove_duplicate_dates(habitica_data): 
     for daily in habitica_data["tasks"]["dailys"]:
         for date in daily["history"]:
@@ -60,7 +36,6 @@ def remove_duplicate_dates(habitica_data):
     return habitica_data
 
 
-# Make dailys by date dictionary
 def make_dailys_by_date_dict(habitica_data):
     dailys_by_date = defaultdict(dict)
     for daily in habitica_data["tasks"]["dailys"]:
@@ -72,7 +47,6 @@ def make_dailys_by_date_dict(habitica_data):
                 completed = date["completed"]
             except KeyError:
                 completed = False
-                print(f"Missing data for {date}")
 
             if date_str not in dailys_by_date:
                 dailys_by_date[date_str] = {}
@@ -86,8 +60,90 @@ def make_dailys_by_date_dict(habitica_data):
             # print(dailys_by_date)
 
     return dailys_by_date
-# ------------------------------------------------------------
-    # Merge `dailys` into `tasks`
+
+
+def write_dailys_to_file(dailys_by_date):
+    with open("dailys.md", "w") as file:
+        for date, dailys in dailys_by_date.items():
+            file.write("\n")
+            file.write(date)
+            file.write("\n")
+            for text, completed, time_str in dailys["dailys"]:
+                status = "- [x]" if completed else "- [ ]"
+                file.write(f"  {status} {time_str} {text}\n")
+
+
+def dailys(habitica_data_file):
+    habitica_data = load_file_to_variable(habitica_data_file)
+    habitica_data = remove_duplicate_dates(habitica_data)
+    dailys_by_date = make_dailys_by_date_dict(habitica_data)
+    write_dailys_to_file(dailys_by_date)
+
+
+############### Todos  ########################
+def make_todos_by_date_dict(habitica_data):
+    todos_by_date = defaultdict(dict)
+    for todo in habitica_data["tasks"]["todos"]:
+        try:
+            datetime_obj = datetime.fromisoformat(todo["date"].replace("Z", ""))  # Convert to datetime object
+        except AttributeError:
+            pass
+        date_str = datetime_obj.strftime("%Y-%m-%d")
+        time_str = datetime_obj.strftime("%H:%M")
+        text = todo["text"]
+        completed = todo["completed"]
+
+        if date_str not in todos_by_date:
+            todos_by_date[date_str] = {}
+
+        if "todos" not in todos_by_date[date_str]:
+            todos_by_date[date_str]["todos"] = []
+
+        subtasks = []
+        if todo["checklist"]:
+            for subtask in todo["checklist"]:
+                sub_text = subtask["text"]
+                sub_completed = subtask["completed"]
+                subtasks.append((sub_text, sub_completed))
+
+        if date_str not in todos_by_date:
+            todos_by_date[date_str] = {}
+
+        if "todos" not in todos_by_date[date_str]:
+            todos_by_date[date_str]["todos"] = []
+
+        todos_by_date[date_str]["todos"].append({
+            "text": text, 
+            "completed": completed, 
+            "time_str": time_str,
+            "subtasks": subtasks
+        })
+
+        todos_by_date = dict(sorted(todos_by_date.items()))
+    return (todos_by_date)
+
+
+def write_todos_to_file(todos_by_date):
+    with open("todos.md", "w") as file:
+        try:
+            for date, tasks in todos_by_date.items():
+                file.write("\n")
+                file.write(f"{date}\n")
+                for text, completed, time_str in tasks['todos']:
+                    status = "- [x]" if completed else "- [ ]"
+                    file.write(f"  {status} {time_str} {text}\n")
+        except ValueError:
+            print(f"Data missing for {text}")
+
+
+def todos(habitica_data_file):
+    habitica_data = load_file_to_variable(habitica_data_file)
+    todos_by_date = make_todos_by_date_dict(habitica_data)
+    write_todos_to_file(todos_by_date)
+
+
+############### All Tasks ######################
+
 def merge_dailys_todos_into_tasks(dailys, todos):
     tasks = {}
     for date, data in dailys.items():
@@ -101,6 +157,7 @@ def merge_dailys_todos_into_tasks(dailys, todos):
             tasks[date] = data  # Add new entry if date does not exist in `tasks`
 
     return tasks
+
 
 def merge_and_write(habitica_data_file):
     habitica_data = load_file_to_variable(habitica_data_file)
@@ -122,17 +179,27 @@ def merge_and_write(habitica_data_file):
                     wrapped_line = textwrap.fill(line, width=75, subsequent_indent=" " * 8)
                     file.write(f"    {wrapped_line}\n")
             except KeyError:
-                print(f"No dailys for {date}")
+                pass
             try:
                 if tasks["todos"]:
                     file.write("  Todos:\n")
-                for text, completed, time_str in tasks['todos']:
+                for todo in tasks['todos']:
+                    text = todo["text"]
+                    completed = todo["completed"]
+                    time_str = todo["time_str"]
+                    subtasks = todo["subtasks"]
                     status = "- [x]" if completed else "- [ ]"
+
                     line = f"{status} {time_str} {text}"
                     wrapped_line = textwrap.fill(line, width=75, subsequent_indent=" " * 8)
                     file.write(f"    {wrapped_line}\n")
+
+                    if subtasks:
+                        for sub_text, sub_status in subtasks:
+                            sub_status_str = "- [x]" if sub_status else "- [ ]"
+                            file.write(f"        {sub_status_str} {sub_text}\n")
             except KeyError:
-                print(f"No todos for {date}")
+                pass
 
 def write_tasks_to_file(tasks):
     with open("tasks.md", "w") as file:
@@ -143,46 +210,10 @@ def write_tasks_to_file(tasks):
             for text, completed, time_str in tasks["dailys"]:
                 status = "- [x]" if completed else "- [ ]"
                 file.write(f"  {status} {time_str} {text}\n")
-# -------------------------------------------------------------
-def write_dailys_to_file(dailys_by_date):
-    with open("dailys.md", "w") as file:
-        for date, dailys in dailys_by_date.items():
-            file.write("\n")
-            file.write(date)
-            file.write("\n")
-            for text, completed, time_str in dailys["dailys"]:
-                status = "- [x]" if completed else "- [ ]"
-                file.write(f"  {status} {time_str} {text}\n")
-
-
-def write_todos_to_file(todos_by_date):
-    with open("todos.md", "w") as file:
-        try:
-            for date, tasks in todos_by_date.items():
-                file.write("\n")
-                file.write(f"{date}\n")
-                for text, completed, time_str in tasks['todos']:
-                    status = "- [x]" if completed else "- [ ]"
-                    file.write(f"  {status} {time_str} {text}\n")
-        except ValueError:
-            print(f"Data missing for {text}")
-
-
-def dailys(habitica_data_file):
-    habitica_data = load_file_to_variable(habitica_data_file)
-    habitica_data = remove_duplicate_dates(habitica_data)
-    dailys_by_date = make_dailys_by_date_dict(habitica_data)
-    write_dailys_to_file(dailys_by_date)
-
-
-def todos(habitica_data_file):
-    habitica_data = load_file_to_variable(habitica_data_file)
-    todos_by_date = make_todos_by_date_dict(habitica_data)
-    write_todos_to_file(todos_by_date)
 
 
 def main():
-    habitica_data_file = 'habitica-user-data1.json'
+    habitica_data_file = 'habitica-user-data.json'
     merge_and_write(habitica_data_file)
     # dailys(habitica_data_file)
     # todos(habitica_data_file)
