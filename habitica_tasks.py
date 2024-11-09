@@ -158,14 +158,15 @@ def merge_dailys_todos_into_tasks(dailys, todos):
 
     return tasks
 
-
-def merge_and_write(habitica_data_file):
-    habitica_data = load_file_to_variable(habitica_data_file)
-    todos_by_date = make_todos_by_date_dict(habitica_data)
-    habitica_data = remove_duplicate_dates(habitica_data)
-    dailys_by_date = make_dailys_by_date_dict(habitica_data)
-    tasks = merge_dailys_todos_into_tasks(dailys_by_date, todos_by_date)
-    write_tasks_to_file(tasks)
+def filter_by_year_and_month(tasks, year, month):
+    # Ensure month is a zero-padded string
+    month = str(month).zfill(2)
+    # Filter items by specified year and month
+    filtered_tasks = {
+        date: data for date, data in tasks.items()
+        if date.split("-")[0] == str(year) and date.split("-")[1] == month
+    }
+    return filtered_tasks
 
 def write_tasks_to_file(tasks):
     with open("tasks.md", "w") as file:
@@ -202,6 +203,15 @@ def write_tasks_to_file(tasks):
                             file.write(f"        {sub_status_str} {sub_text}\n")
             except KeyError:
                 pass
+
+def merge_and_write(habitica_data_file):
+    habitica_data = load_file_to_variable(habitica_data_file)
+    todos_by_date = make_todos_by_date_dict(habitica_data)
+    habitica_data = remove_duplicate_dates(habitica_data)
+    dailys_by_date = make_dailys_by_date_dict(habitica_data)
+    tasks = merge_dailys_todos_into_tasks(dailys_by_date, todos_by_date)
+    # tasks = filter_by_year_and_month(tasks, 2024, 11)
+    write_tasks_to_file(tasks)
 
 
 def main():
