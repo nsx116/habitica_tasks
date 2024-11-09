@@ -165,7 +165,9 @@ def merge_and_write(habitica_data_file):
     habitica_data = remove_duplicate_dates(habitica_data)
     dailys_by_date = make_dailys_by_date_dict(habitica_data)
     tasks = merge_dailys_todos_into_tasks(dailys_by_date, todos_by_date)
+    write_tasks_to_file(tasks)
 
+def write_tasks_to_file(tasks):
     with open("tasks.md", "w") as file:
         for date, tasks in tasks.items():
             file.write("\n")
@@ -190,7 +192,7 @@ def merge_and_write(habitica_data_file):
                     subtasks = todo["subtasks"]
                     status = "- [x]" if completed else "- [ ]"
 
-                    line = f"{status} {time_str} {text}"
+                    line = f"{status} {text}"
                     wrapped_line = textwrap.fill(line, width=75, subsequent_indent=" " * 8)
                     file.write(f"    {wrapped_line}\n")
 
@@ -200,16 +202,6 @@ def merge_and_write(habitica_data_file):
                             file.write(f"        {sub_status_str} {sub_text}\n")
             except KeyError:
                 pass
-
-def write_tasks_to_file(tasks):
-    with open("tasks.md", "w") as file:
-        for date, tasks in tasks.items():
-            file.write("\n")
-            file.write(date)
-            file.write("\n")
-            for text, completed, time_str in tasks["dailys"]:
-                status = "- [x]" if completed else "- [ ]"
-                file.write(f"  {status} {time_str} {text}\n")
 
 
 def main():
