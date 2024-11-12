@@ -20,6 +20,7 @@ To get your `habitica-user-data.json` file:
 Alternatively, you can also follow these steps:
 - Click on your user icon in the top right corner of the main page.
 - Navigate to **Settings → Site Data**.
+- Click **Learn More** under **User Data** and then click **Download as JSON**.
 - In the **Your User Data** section, click **Download as JSON**.
 
 ## How to Use the Script
