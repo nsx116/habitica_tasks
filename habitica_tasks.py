@@ -52,7 +52,7 @@ def make_dailys_by_date_dict(habitica_data):
             try:
                 completed = date["completed"]
             except KeyError:
-                completed = False
+                completed = None
 
             if date_str not in dailys_by_date:
                 dailys_by_date[date_str] = {}
@@ -60,8 +60,11 @@ def make_dailys_by_date_dict(habitica_data):
             if "dailys" not in dailys_by_date[date_str]:
                 dailys_by_date[date_str]["dailys"] = []
 
-            
-            dailys_by_date[date_str]["dailys"].append((text, completed, time_str))
+            try:
+                if date["isDue"]:
+                    dailys_by_date[date_str]["dailys"].append((text, completed, time_str))
+            except KeyError:
+                pass
             dailys_by_date = dict(sorted(dailys_by_date.items()))
 
     return dailys_by_date
