@@ -1,3 +1,9 @@
+# The script retrieves dailys and todos from habitica-user-data.json and prints
+# them as .md file. Put the script and habitica-user-data.json to the same 
+# folder and run: python3 habitica_tasks.py. Output file's name is tasks.md. If
+# you want to retrieve data for particular month of a year, uncomment specified
+# line in merge_and_write(habitica_data_file) function.
+
 from pathlib import Path
 import json
 import textwrap
@@ -57,7 +63,6 @@ def make_dailys_by_date_dict(habitica_data):
             
             dailys_by_date[date_str]["dailys"].append((text, completed, time_str))
             dailys_by_date = dict(sorted(dailys_by_date.items()))
-            # print(dailys_by_date)
 
     return dailys_by_date
 
@@ -83,6 +88,9 @@ def dailys(habitica_data_file):
 ############### Todos  ########################
 def make_todos_by_date_dict(habitica_data):
     todos_by_date = defaultdict(dict)
+    # Create a mapping from tag ID to tag name
+    tag_id_to_name = {tag["id"]: tag["name"].strip() for tag in habitica_data["tags"]}
+
     for todo in habitica_data["tasks"]["todos"]:
         try:
             datetime_obj = datetime.fromisoformat(todo["date"].replace("Z", ""))  # Convert to datetime object
@@ -93,18 +101,22 @@ def make_todos_by_date_dict(habitica_data):
         text = todo["text"]
         completed = todo["completed"]
 
-        if date_str not in todos_by_date:
-            todos_by_date[date_str] = {}
-
-        if "todos" not in todos_by_date[date_str]:
-            todos_by_date[date_str]["todos"] = []
-
         subtasks = []
+        # - [ ] check this if statement
         if todo["checklist"]:
             for subtask in todo["checklist"]:
                 sub_text = subtask["text"]
                 sub_completed = subtask["completed"]
                 subtasks.append((sub_text, sub_completed))
+        
+        translated_tags = []
+        for tag_id in todo["tags"]:
+            tag_name = tag_id_to_name.get(tag_id)
+            # Only append tag_name if it exists in tag_id_to_name
+            if tag_name is not None:
+                translated_tags.append(tag_name)
+            # Update the tags in the todo item
+            # todo["tags"] = translated_tags
 
         if date_str not in todos_by_date:
             todos_by_date[date_str] = {}
@@ -116,7 +128,8 @@ def make_todos_by_date_dict(habitica_data):
             "text": text, 
             "completed": completed, 
             "time_str": time_str,
-            "subtasks": subtasks
+            "subtasks": subtasks,
+            "tags": translated_tags,
         })
 
         todos_by_date = dict(sorted(todos_by_date.items()))
@@ -158,6 +171,7 @@ def merge_dailys_todos_into_tasks(dailys, todos):
 
     return tasks
 
+
 def filter_by_year_and_month(tasks, year, month):
     # Ensure month is a zero-padded string
     month = str(month).zfill(2)
@@ -167,6 +181,7 @@ def filter_by_year_and_month(tasks, year, month):
         if date.split("-")[0] == str(year) and date.split("-")[1] == month
     }
     return filtered_tasks
+
 
 def write_tasks_to_file(tasks):
     with open("tasks.md", "w") as file:
@@ -192,17 +207,21 @@ def write_tasks_to_file(tasks):
                     time_str = todo["time_str"]
                     subtasks = todo["subtasks"]
                     status = "- [x]" if completed else "- [ ]"
-
-                    line = f"{status} {text}"
+                    tags = todo["tags"]
+                    formatted_tags = " ".join(f"#{tag}" for tag in tags)
+                    line = f"{status} {text} {formatted_tags}"
                     wrapped_line = textwrap.fill(line, width=75, subsequent_indent=" " * 8)
                     file.write(f"    {wrapped_line}\n")
 
                     if subtasks:
                         for sub_text, sub_status in subtasks:
                             sub_status_str = "- [x]" if sub_status else "- [ ]"
-                            file.write(f"        {sub_status_str} {sub_text}\n")
+                            sub_line = f"{sub_status_str} {sub_text}"
+                            wrapped_sub_line = textwrap.fill(sub_line, width = 75, subsequent_indent=" " * 8)
+                            file.write(f"        {wrapped_sub_line}\n")
             except KeyError:
                 pass
+
 
 def merge_and_write(habitica_data_file):
     habitica_data = load_file_to_variable(habitica_data_file)
@@ -210,6 +229,7 @@ def merge_and_write(habitica_data_file):
     habitica_data = remove_duplicate_dates(habitica_data)
     dailys_by_date = make_dailys_by_date_dict(habitica_data)
     tasks = merge_dailys_todos_into_tasks(dailys_by_date, todos_by_date)
+    # Uncomment the line below if you want make .md file for particular month
     # tasks = filter_by_year_and_month(tasks, 2024, 11)
     write_tasks_to_file(tasks)
 
@@ -217,8 +237,6 @@ def merge_and_write(habitica_data_file):
 def main():
     habitica_data_file = 'habitica-user-data.json'
     merge_and_write(habitica_data_file)
-    # dailys(habitica_data_file)
-    # todos(habitica_data_file)
 
 
 if __name__ == "__main__":
