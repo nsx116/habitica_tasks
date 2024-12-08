@@ -198,7 +198,7 @@ def write_tasks_to_file(tasks):
                     status = "- [x]" if completed else "- [ ]"
                     line = f"{status} {time_str} {text}"
                     wrapped_line = textwrap.fill(line, width=75, subsequent_indent=" " * 8)
-                    file.write(f"    {wrapped_line}\n")
+                    file.write(f"  {wrapped_line}\n")
             except KeyError:
                 pass
             try:
@@ -214,14 +214,14 @@ def write_tasks_to_file(tasks):
                     formatted_tags = " ".join(f"#{tag}" for tag in tags)
                     line = f"{status} {text} {formatted_tags}"
                     wrapped_line = textwrap.fill(line, width=75, subsequent_indent=" " * 8)
-                    file.write(f"    {wrapped_line}\n")
+                    file.write(f"  {wrapped_line}\n")
 
                     if subtasks:
                         for sub_text, sub_status in subtasks:
                             sub_status_str = "- [x]" if sub_status else "- [ ]"
                             sub_line = f"{sub_status_str} {sub_text}"
                             wrapped_sub_line = textwrap.fill(sub_line, width = 75, subsequent_indent=" " * 8)
-                            file.write(f"        {wrapped_sub_line}\n")
+                            file.write(f"      {wrapped_sub_line}\n")
             except KeyError:
                 pass
 
@@ -233,7 +233,7 @@ def merge_and_write(habitica_data_file):
     dailys_by_date = make_dailys_by_date_dict(habitica_data)
     tasks = merge_dailys_todos_into_tasks(dailys_by_date, todos_by_date)
     # Uncomment the line below if you want make .md file for particular month
-    # tasks = filter_by_year_and_month(tasks, 2024, 11)
+    tasks = filter_by_year_and_month(tasks, 2024, 11)
     write_tasks_to_file(tasks)
 
 
